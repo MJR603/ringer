@@ -13,6 +13,19 @@ what happened, and what you'd do differently. Only write what the executed
 checks and raw logs support — no vibes, no worker self-reports.
 
 ## codex (GPT-5-class, own harness)
+- 2026-08-08 (research / SRG bookkeeping judgment packs, s31+s32): s31 3/3
+  with one-retry pattern on judgment packs; s32 repeat — 3/3, two of three
+  needed one retry (validator: thin rationale / disposition vocab misses on
+  attempt 1). Retry-with-injected-failure reliably rescues; keep Codex on
+  judgment, budget one retry into timing.
+- 2026-08-08 (docs / mech classification, s31): Sonnet 7/7 first-try on
+  coding packs at ~200-token median; s32 repeat 3/3 first-try. Sonnet is
+  the proven mech-pack default for this workload. (Recorded under codex
+  section for the s30/s31 comparison context: GLM was NOT exercised in s31;
+  the s30 GLM note debt is closed as no-evidence — nothing to record.)
+- 2026-08-08 (mech classification, s31): ollama/qwen3:8b failed 0/2 on a
+  mech pack and is DEMOTED for SRG classification work — do not re-audition
+  without a material model update.
 
 - Strongest general worker; the default engine. Spend reasoning effort per
   task via `engine_args` (`["-c", "model_reasoning_effort=low|medium|high"]`)
@@ -199,6 +212,13 @@ checks and raw logs support — no vibes, no worker self-reports.
   Persona work: good. Watch for letter-of-the-spec shortcuts on layout asks.
 
 ## nemotron-3-super-120b (via opencode, `openrouter/nvidia/nemotron-3-super-120b-a12b:free`)
+- 2026-08-08 (docs / SRG bookkeeping mech-classification, s32 Phase-3 Stage 1):
+  audition on one 28-line coding pack (free promo). Attempt 1 FAILED the
+  executed validator, attempt 2 PASSED clean (28/28 verdicts, ~268k tokens,
+  ~32min — slowest task in the run by 8x vs Sonnet). Verdict quality fine on
+  spot-check. Usable as free overflow for non-urgent mech packs; do not put
+  it on the critical path — latency and first-try miss cost more than Sonnet
+  saves when the run gates a sitting.
 
 - 2026-07-06 — AUDITION FAILED (exploration slot, $0 spent — free promo).
   Task: fresh-eyes adversarial review of a 2,650-line diff with a structured
@@ -224,6 +244,24 @@ checks and raw logs support — no vibes, no worker self-reports.
   group lesson).
 
 ## Process lessons (cross-model)
+
+- 2026-07-21 — planner-p2 t7: check bug class NEW to the list — a
+  forbidden-pattern grep (`new Date()|Date.now`) matched the worker's COMMENT
+  explaining it doesn't use those calls. Worker attempt-2 substance was correct;
+  the red row is orchestrator fault. Rule: strip comments (sed 's|//.*||') before
+  any forbidden-pattern grep on source files.
+- 2026-07-21 — planner-scenario-editor (opus): attempt-1 "FAIL" was functionally
+  correct code — element ids assigned at RUNTIME (sel.id = x) are invisible to a
+  static grep contract. Worker self-diagnosed on retry, made every contract id a
+  source literal, and honestly reported its sandbox blocked node --check instead
+  of bypassing. Check-author rule: when a contract will be grep-verified, the
+  SPEC must say "these ids/classes must appear as literals in source".
+- 2026-07-21 — planner-p3 t8: same family, third instance — `grep -qF "--fan-inner"`
+  parsed the needle as OPTIONS (grep usage error -> false FAIL x2 on a correct
+  opus build). Rule: ALWAYS `grep -- "$needle"` when needles can start with a dash.
+  planner-p3 t4 (sonnet): substance passed attempt 1; recorded FAILs were a leftover
+  `_probe.py` scratch file tripping the ownership gate — benign self-test, removed at
+  integration. Spec rule: remind workers to delete scratch files before finishing.
 
 - 2026-07-06 — the orchestrator's CHECKS were the day's top failure source:
   three check bugs (fixture newline join, first-occurrence ordering vs the
@@ -313,9 +351,92 @@ checks and raw logs support — no vibes, no worker self-reports.
 ## opencode / z-ai glm-5.2 (via openrouter)
 - 2026-07-09 (aicred-invoice-downloads, 4 code-fix tasks + 1 follow-up, worktrees+npm ci checks): systematic attempt-1 NO-OP — all 4 parallel workers produced zero edits and no summary on first attempt, then completed cleanly on attempt 2 after retry-prompt injection (34k-69k tokens each). Follow-up single task passed attempt 1. Suspect first-invocation session warm-up in opencode-sandboxed under parallel spawn; budget for 2 attempts on parallel GLM batches. Output quality on Next.js/Stripe route+test work: solid, spec-faithful, one boss-caught design gap (used user-scoped supabase client where RLS demanded service role — spec didn't say explicitly; say it explicitly).
 
-## opencode (harness note, any model)
+- 2026-07-21 — planner-p0-hardening task1 (code-feature): OAuth plan usage limit hit, both attempts died at 0 tokens ("try again Jul 25"). Not a capability signal. Route around codex until 2026-07-25; check limit before assigning heavy lanes.
 - 2026-07-28 (code-review, pr82-token-saver-review): GLM 5.2 produced a complete, high-quality 218-line report but could NOT write it to an output directory created by the parent Claude Code process — every write returned EPERM. It then spent ~3000s burning retries on ctypes/`openat`/AppleScript/`sandbox-exec` workarounds until it timed out, and the task logged as FAIL despite the deliverable existing in its taskdir. Codex workers in the same run were unaffected. Lesson: point opencode workers' output INSIDE their own taskdir and harvest via `expect_files`; never hand them a shared output dir another process created. This is an orchestrator spec bug, not a model failure — do not read the FAIL as evidence against GLM.
 
 ## Process lessons (2026-07-28, PR #82 review)
 - **Ideas worth keeping from a rejected PR.** PR #82's pre-call gateway was dropped (needs your own API key, so it converts flat-rate OAuth plans into metered API billing; incompatible with Claude Code; and it saves tokens by stripping the tool list, which is the thing that makes the CLI worth using). One idea inside it is worth remembering if the problem ever comes back: an *explicitly blessed* answer cache — key a reviewed answer to the exact request plus the exact selected source packet, and replay it with zero upstream calls, never auto-accepting a model answer. It only fires on byte-identical repeats, which is why it didn't justify 2,000 lines here.
 - **Doc-stated support floors need a CI job or they are fiction.** README promised Python 3.11+ while CI only ever ran 3.12; a 3.12-only f-string reached review with a fully green suite. Either test the floor or move it.
+
+- 2026-07-21 — planner-p1b (8 sequential one-task manifests, same run_name):
+  8/8 PASS attempt 1, zero probe bugs, zero integrity incidents. Lanes: GLM 5.2
+  4/4 (estate fix, two strategy modules, bracket_fill, metrics — 69-73k tok,
+  ~100-150s each), opus 2/2 (strategy-interface plumbing through the projection
+  fixed point; guardrails state in the core loop), sonnet 2/2 (scenario runner +
+  loader split; CLI subcommand restructure). Every check baselined before spawn
+  (--baseline caught nothing this time — the three standing check-author rules
+  from P0/P1a were applied at authoring). Contrast with P0/P1a's ~6:2
+  probe-bug ratio: writing exact assertions only at unit level (no projection),
+  using discriminating fixtures (10%-return opening-balance probe), and no-account
+  /zero-tax fixtures for exact spend arithmetic eliminated the false-FAIL class.
+  Codex remained usage-limited (Jul 25); grok benched by choice.
+
+- 2026-07-21 — planner-p2 t3 (code-feature, sonnet): FAIL x2 on the scoreboard
+  but SUBSTANCE CORRECT — worker wrote the right files at the right paths AND a
+  stray nested tools/retirement-planner/tools/retirement-planner/ duplicate
+  (path confusion working from the planner subdir); pytest collected both test
+  copies, the nested one couldn't find fixtures. Untouched check passed once
+  the orchestrator deleted the stray dir; merged after review. Spec lesson:
+  when the repo nests the project under tools/<name>/, tell workers explicitly
+  "all paths are relative to the WORKTREE ROOT; never create tools/<name>
+  inside tools/<name>" — second path-confusion class this program.
+
+## grok (Grok Build CLI, grok-4.5)
+
+- 2026-07-21 — planner-p0-hardening task2 (code-fix): PASS attempt 2, ~12min. Implementation correct (exact planned 2-line fix) and its diagnosis of a miscalibrated check bound was RIGHT — but instead of failing and reporting, it EDITED THE ORCHESTRATOR CHECK SCRIPT (writable because checks lived under /private/tmp and grok Seatbelt allows temp writes). Verdict void until independent re-verification (which confirmed the fix). Lesson: never store checks/patches under temp with grok workers; now in ~/.ringer/p0/. Behavior note: strong analysis, weak verification-boundary respect — spec future grok tasks with an explicit "if the check seems wrong, FAIL and report; never modify verification" rule.
+
+## claude (Claude Code CLI, subscription lane)
+
+- 2026-07-29 — OP-COORD-01 program survey (research, 17 tasks across 4 rounds, sonnet on `claude` / `claude-readonly` / `claude-research` lanes): **the scoreboard's red rows for this job are almost entirely MINE, not the model's.** 8 of 9 first-round failures were orchestrator check bugs, each burning a retry: (1) section anchors treated as part of a path — `SOP-013.md §3.1` never `exists`; (2) repo-relative paths resolved against the caller's cwd; (3) `gate`/`obligation`/`person`/`entity` nodes required to have a filesystem path, when a deadline or an external org has none; (4) only the FIRST node table parsed, so reports that split nodes by class lost most rows and then threw phantom "undeclared node" errors on their own edges; (5) escaped pipes (`\|`) inside cells splitting rows into the wrong cell count and silently dropping them; (6) markdown HEADER rows checked for citations — a header containing the word "Pricing" failed as an "unsourced pricing claim", twice. Re-running the 8 against fixed checks: 7 passed, 1 was a genuine catch. **Lesson (5th instance of this class in this file): baseline a check against a REALISTIC artifact, not a hand-written fixture.** My fixture used one node table, absolute paths, no anchors, no escaped pipes — none of the shapes real workers produce. The fixture passed; reality failed. Baseline against a sample of actual worker output before spawning a batch.
+- 2026-07-29 — same job, the model's actual behaviour was strong. Workers repeatedly refused to assert `live` when their tooling could not prove it, wrote `verified_how=GAP` instead, and said so explicitly in their own Gaps sections ("this is a materially different, weaker command than a direct `stat`, noted here so it isn't mistaken for one"). One flagged that its finding "confirms the brief's premise rather than surfacing an exception to it" — i.e. volunteering that it had found absence of evidence, not evidence. When briefed with an epistemic standard, sonnet holds it under pressure and reports its own limits unprompted. The single real failure was mislabeling an unchecked item `held` rather than leaving state empty — an over-assertion, correctly caught by the check.
+- 2026-07-29 — sandbox note for the `claude` engine: widening `--allowedTools` to include read-only shell (`ls`/`stat`/`git log`/`launchctl list`) got `launchctl`, `launchctl print` and `ps` working, but did NOT lift the harness's working-directory restriction — `stat`/`find`/`git` against any path outside the worker's own taskdir stayed blocked even with the disable-sandbox flag set. That is a separate, harder layer than the tool-prefix allowlist. Workers routed around it by reading `.git/logs/HEAD` directly (the Read tool is not so restricted). Budget for this: filesystem-inspection swarms on this harness cannot `stat` the estate, and specs should say so up front rather than letting workers discover it and spend turns on it.
+
+- 2026-07-21 — planner-p0-hardening task4 (code-feature, sonnet): scoreboard FAIL x2 is FALSE — both failures were orchestrator-check bugs (asserted post-split deb_income monotonicity, then a withdrawal-order confound; three probe rewrites needed). Worker code was correct from attempt 1; attempt 2 correctly re-diagnosed the check, honored the integrity rule (investigated, reported, did not touch verification), cleaned its scratch files. Treat sonnet as strong on this codebase despite the red rows. Check-author lesson: split-optimizer output and withdrawal sourcing are NOT monotone in inputs — probe per-return deltas with split disabled.
+- 2026-07-21 — planner-p0 rounds 6-8: opus first-try on the two hardest tasks (projection fixed-point restructure ~7min; estate module ~4min) with correct out-of-ownership constraint handling (recomputed credits rather than touching a frozen module). sonnet first-try on the integration sweep. GLM 5.2 finished 3/3 first-try on this codebase (tasks 1,3,5). Lane verdict for this repo: GLM for well-specced mechanical, sonnet mid, opus heavy — all under orchestrator-owned checks in ~/.ringer/p0.
+- 2026-07-21 — p1a task1 (code-feature, GLM 5.2): PASS attempt 2 but with a semantics bend — probe had a withdrawal-displacement confound (orchestrator fault, 3rd instance of the class) and instead of reporting it, GLM carved stream cash out of wd_need so income would not displace draws, rationalized in a code comment. Stayed in-ownership (better than grok) but bent engine economics to satisfy a flawed check. Orchestrator reverted the carve-out, rebuilt tests on account-free households, added an economics guard test. Standing check-author rule: tax-attribution probes run on NO-ACCOUNT households; always pair with a displacement guard assertion.
+- 2026-07-21 — p1a task6 (code-feature, opus): scoreboard FAIL x2 is FALSE — both were orchestrator probe bugs (cap arithmetic exceeded the cap in the "uncapped" case; excess->reinvest->taxed-growth second-order income; survivor tax flip read as a disposition spike). Opus implementation was correct to the dollar (verified by empirical decomposition), honored the integrity rule, cleaned scratch. Opus now 3/3 truly-correct on hardest lanes. Probe-author lessons now standing: (1) no-account households for attribution; (2) kill the excess-reinvest channel (spend > income) when asserting exact deltas; (3) guards must discriminate at the right order of magnitude.
+
+## ollama/qwen3:8b
+- 2026-07-24 (data-pipeline, srg-2025-recon normalize-rbc-chq): FAIL x2, produced zero deliverables both attempts even after task-local-write fix that unblocked sonnet/opus peers. 287-row CSV transform with a detailed spec — well within claimed capability, but it got lost in sandbox/write mechanics. Demoted for data-pipeline; don't re-audition below 14B on multi-file harness tasks.
+
+## sonnet (claude) — 2026-07-29, op-coord-01-stage2-gate-repackage
+- docs/synthesis (3 tasks: G2 FINAL, G5 FINAL, Fusion MAB v4): 0/3 first-try, 3/3 on retry. All three first attempts included phrases the spec explicitly banned (struck wording quoted from source docs it was told to correct); the validator's failure output named each banned phrase and every retry cleaned them fully without damaging content. Lesson: when a synthesis task must EXCLUDE wording present in its own source material, expect a retry — the ban list in the check is doing the enforcement, not the spec. Budget 2 attempts; don't treat the pattern as model failure.
+- Same run: orchestrator reintroduced a scanner-banned string into a handoff by QUOTING the false positive it was documenting. Checks/docs that describe banned patterns must describe, not reproduce.
+
+## claude (Claude Code CLI) — 2026-07-30, op-coord-01-stage3-coa
+- 8-lane research fan-out (sonnet): scoreboard shows 0/8 — ALL FALSE FAILS, orchestrator harness bug. Specs directed workers to Write FINALs to absolute REPO paths; the harness Write tool is restricted to the task directory (same layer as the shell cwd restriction noted 2026-07-29 — Read is unrestricted, Write is NOT). Every worker produced a complete, substantive FINAL (16-42KB); every Write was permission-denied; both attempts burned on the same wall. Recovery: the denial records in worker.log carry full tool_input.content — harvested all 8 artifacts from logs, zero content loss, 6/8 passed checks as-recovered. STANDING RULE: claude-engine workers write task-local (./FINAL.md); the orchestrator harvests to destination after QA. Never spec a repo-absolute Write path for this engine.
+- Check-rigidity instance #7: required Lessons-Consulted to contain 8-hex OB1 IDs or literal "none found"; two workers honestly declared OB1 tools unreachable in the harness and enumerated attempted queries — substance-correct, check-failed. Checks demanding evidence-of-search must accept an explicit unavailability declaration. (Also: OB1 MCP reachability from ringer claude workers is inconsistent — 1 of 8 got through; assume unavailable and route lessons via an orchestrator-produced input file.)
+
+- 2026-07-30 — drover-slice0-build (code-feature, 7 tasks across 3 rounds):
+  codex 7/7 substance pass. Round-1 four lanes (loader/ledger/broker/match,
+  ~50-80k tok each) and the loader fix all first-try. Round-2 "FAIL" x2 were
+  orchestrator CHECK defects: a JSON-escaped heredoc (\" became literal
+  backslash -> SyntaxError AFTER the real validator printed 16/16 PASS) and
+  a check asserting an output schema the spec never pinned. Lessons: never
+  embed escaped heredocs in manifest check strings (write a check .py file
+  and call it), and pin exact output schemas in specs before asserting them.
+- 2026-07-31 (rog-cos): code-fix x3 + code-feature x4 + site-build x1 today, phase 2+3 drover build — 7/9 first-try PASS; two check-caused retries were COS check defects (triviality tripwire worked as designed once, loader-stop 503 misread once). gpt-5.4 found a real product defect honestly when its spec allowed reporting instead of passing. Sandbox blocks localhost binds — server-driving checks must run orchestrator-side.
+
+## 2026-08-07 — acct-hardening (r-accounting)
+- **GLM 5.2** (opencode): code-feature ×2 (idempotency 8-file sweep; confidence routing 4-file build) — both first-try PASS, 84k/95k tokens. Handles long, prescriptive specs with executed-test checks cleanly. Confidence routing was the larger build (848s) — no retry needed.
+- **codex gpt-5.4 high**: code-feature ×2 (anti-plug export gate; invariant suite) — both first-try PASS, 86k/85k tokens. Given the judgment-heavy lanes (fail-closed design, consume-once matching, false-alarm-avoidance doctrine); design decisions in notes were sound and needed no rework. Probation numbers on this box undersell it for well-specced repo work.
+- Pattern note: worktrees + patch-export + executed-suite checks = 4/4 first-try on a real bookkeeping repo; the detailed spec (ownership list, house-style pointers, named invariants/violations as contract) is doing the heavy lifting.
+
+## nvidia/nemotron-3-ultra-550b-a55b:free
+- 2026-08-11 (docs / SRG bookkeeping recode audit, srg-h1-2026-sweep): passed a 7-row adjudication pack first-try (~56k tokens), then failed an 80-row pack twice (coverage/validator failures both attempts; sonnet retry cleared it first-try). Read: fine for small packs, chokes on large structured-output batches — cap its lane at ~20 rows or keep it off batch-coverage tasks.
+
+## 2026-08-12 — ob1-domain-classification (research/data-labeling, 15 batches × 25 rows)
+- **opencode engine, parallel 5: "database is locked" hard-fails.** Five concurrent opencode instances contend on its shared SQLite state; workers died pre-work. At parallel 2 the lock vanished. STANDING RULE: cap opencode lanes at max_parallel 2 (or stagger) until the engine isolates per-instance state.
+- **opencode sandbox confines WRITES to the task directory** (same wall as the claude-engine 2026-07-29/absolute-Write note — this is the harness pattern, not one engine's quirk). Round-1 specs demanded an absolute workdir/out/ path: 7 workers did the classification correctly, fell back to writing in cwd, all check-failed on file location. Recovery: validated the misplaced artifacts orchestrator-side, harvested 7/7 PASS, zero content loss. Round-2 spec writes ./output.json task-local and the CHECK exports to out/ on pass. STANDING RULE (all engines): deliverables task-local; the check or orchestrator moves them.
+- **GLM 5.2** classification quality on 700-char knowledge-row snippets: sensible domain calls, honest confidence spread, ids exact (7/7 validated packs). Good cheap lane for structured labeling at ≤25 rows/pack.
+
+## google/gemini-3.7-flash (OpenRouter via opencode)
+- 2026-08-18 — research (r-accounting s50 forensic lane): audition VOID, not a demotion. Both attempts died in ~1s with OpenRouter "Unexpected server error" (err_34a6f78d, err_d177a6e3) — zero model output. Model was added to the catalog 08-14; provider route may not be live yet. Re-audition after a trivial one-task probe passes; do not burn a real lane on it again until then.
+
+## Orchestration lesson (not model-specific)
+- 2026-08-20 — estate-edit swarm, codex/gpt-5.4-high: 6/8 tasks failed twice because
+  `--sandbox workspace-write` blocks writes outside the task dir; two tasks got through
+  (writable-roots config variance). Fix that worked: patch-export contract — workers
+  write complete post-edit copies to ./out/ with truncation guards, orchestrator
+  diffs, applies, re-runs live checks. 6/6 first-try on rerun. Any manifest that
+  edits files outside the workdir needs the export contract or full_access.
