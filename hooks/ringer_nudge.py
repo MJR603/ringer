@@ -23,9 +23,17 @@ PROVIDER_RE = re.compile(
     r"generativelanguage\.googleapis|/v1/chat/completions|/v1/messages)",
     re.IGNORECASE,
 )
+# The keyword must appear in the script's own basename, not anywhere in its
+# path. `\S*` used to span directories, so an ordinary command living under a
+# directory like clean-my-ai-harness-mission-fit/ tripped the nudge on the word
+# "harness" in a folder name (observed 2026-08-19). `[^/\s]*` cannot cross a
+# path separator, so only the segment after the last slash is inspected.
 HARNESS_RE = re.compile(
-    r"\b(?:node|python3?|bun|deno)\s+\S*"
-    r"(?:simulat|probe|smoke|harness|persona|grader|eval)\S*"
+    r"\b(?:node|python3?|bun|deno)\s+"
+    r"(?:\S*/)?"
+    r"[^/\s]*"
+    r"(?:simulat|probe|smoke|harness|persona|grader|eval)"
+    r"[^/\s]*"
     r"\.(?:mjs|js|ts|py)\b",
     re.IGNORECASE,
 )
@@ -98,23 +106,46 @@ def state_dir(home: Path) -> Path:
     return home / "nudge-state"
 
 
+# How many qualifying occurrences pass between nudges. The first one always
+# nudges; after that the hook stays quiet until the interval rolls over.
+NUDGE_INTERVAL = 10
+
+
 def marker_path(home: Path, session_id: Any, event: str) -> Path:
     key = f"{session_id}\0{event}".encode("utf-8", errors="replace")
     digest = hashlib.sha256(key).hexdigest()
     return state_dir(home) / f"{digest}.{event}.nudged"
 
 
+def read_seen_count(path: Path) -> int:
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return 0
+    seen = raw.get("seen") if isinstance(raw, dict) else None
+    return seen if isinstance(seen, int) and seen >= 0 else 0
+
+
 def claim_dedupe_marker(home: Path, session_id: Any, event: str) -> bool:
+    """Record one qualifying occurrence; report whether it should nudge.
+
+    Previously this wrote a one-shot marker, so a nudge spent on a false
+    positive silenced the hook for the rest of the session (measured: 18
+    pre-bash nudges across 436 sessions). Now the count is kept and the hook
+    speaks again once the interval rolls over, so a wasted nudge costs a
+    cooldown rather than the whole session.
+    """
     directory = state_dir(home)
     directory.mkdir(parents=True, exist_ok=True)
     marker = marker_path(home, session_id, event)
-    try:
-        with marker.open("x", encoding="utf-8") as fh:
-            fh.write(datetime.now(timezone.utc).isoformat())
-            fh.write("\n")
-    except FileExistsError:
-        return False
-    return True
+
+    seen = read_seen_count(marker) + 1
+    should_nudge = (seen - 1) % NUDGE_INTERVAL == 0
+    payload = {"seen": seen, "event": str(event), "last_seen": datetime.now(timezone.utc).isoformat()}
+    if should_nudge:
+        payload["last_nudged_at_seen"] = seen
+    write_json_atomic(marker, payload)
+    return should_nudge
 
 
 def output_nudge(event_name: str) -> None:

@@ -151,6 +151,35 @@ class NudgeHookTests(unittest.TestCase):
         proc = self.run_hook("pre-bash", "{not json")
         self.assertSilent(proc)
 
+    def test_pre_bash_ignores_keyword_in_directory_path(self) -> None:
+        """Regression, 2026-08-19: a folder named ...-harness-... tripped the nudge."""
+        command = (
+            "python3 /Users/x/.claude/skills/clean-my-ai-harness-mission-fit"
+            "/scripts/inspect_cleaner_install.py --surface claude-code"
+        )
+        self.assertSilent(self.run_hook("pre-bash", self.pre_bash_payload(command)))
+
+    def test_pre_bash_still_nudges_when_keyword_is_in_the_script_name(self) -> None:
+        command = "python3 /Users/x/some/deep/path/run_probe.py --n 5"
+        self.assertNudged(self.run_hook("pre-bash", self.pre_bash_payload(command)), "PreToolUse")
+
+    def test_pre_bash_speaks_again_after_the_cooldown_rolls_over(self) -> None:
+        """A nudge spent on one command must not silence the whole session."""
+        payload = self.pre_bash_payload("node probe-simulate.mjs", "cooldown-session")
+        self.assertNudged(self.run_hook("pre-bash", payload), "PreToolUse")
+        for _ in range(9):
+            self.assertSilent(self.run_hook("pre-bash", payload))
+        self.assertNudged(self.run_hook("pre-bash", payload), "PreToolUse")
+
+    def test_pre_bash_tolerates_a_legacy_plaintext_marker(self) -> None:
+        """Markers written by the old one-shot scheme are not JSON."""
+        payload = self.pre_bash_payload("node probe-simulate.mjs", "legacy-session")
+        self.run_hook("pre-bash", payload)
+        markers = list((self.ringer_home / "nudge-state").glob("*.pre-bash.nudged"))
+        self.assertEqual(len(markers), 1)
+        markers[0].write_text("2026-07-27T11:03:00+00:00\n", encoding="utf-8")
+        self.assertNudged(self.run_hook("pre-bash", payload), "PreToolUse")
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
