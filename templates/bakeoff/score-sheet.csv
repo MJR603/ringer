@@ -1,0 +1,3 @@
+run_id,scenario,model,first_try_pass,eventual_pass,attempts,human_repair_minutes,provider_stall_minutes,tokens_total,full_cost_per_accepted_artifact,disposition,notes
+bakeoff-2026-08-20-a,invoice-classification,openrouter/z-ai/glm-5.2,yes,yes,1,0,0,18432,0.03,accepted,EXAMPLE - first-try pass with accepted artifact
+bakeoff-2026-08-20-b,invoice-classification,openrouter/moonshotai/kimi-k2.7-code,no,no,2,6,18,96210,,provider-failure,EXAMPLE - provider stalled twice and no artifact was accepted
