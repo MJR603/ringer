@@ -35,23 +35,24 @@ The manifest invokes `checks/bakeoff.py`. The validator checks the evaluator rep
 
 This catches the specific bakeoff failure mode from prior runs: task keys named different competitors while the engine block ran one hard-coded model. A real bakeoff has the candidate in the per-task `model` field and verifies the model column or run metadata.
 
-Before you fan out a round, baseline the check against at least one realistic worker artifact, not only hand-written fixtures. See `docs/MODEL-NOTES.md` for the failure mode this avoids.
+Before you fan out a round, pre-flight the check against at least one realistic worker artifact, not only hand-written fixtures (this is separate from ringer's `run --baseline` flag): save a real evaluator-notes.md from a single trial cell, then run `python3 checks/bakeoff.py --session-dir <trial-cell-dir> --notes <trial-cell-dir>/evaluator-notes.md --expected-model <model> --session-validator <command>` and fix the check until it passes that artifact for the right reasons. See MODEL-NOTES in the source repo (`docs/MODEL-NOTES.md`) for the failure mode this avoids.
 
 ## Score sheet
 
-Use `score-sheet.csv` as the round ledger. Write one row per `(scenario, model)` cell after each round, filled from the run JSON and raw logs, not from worker self-report.
+Use `score-sheet.csv` as the round ledger. Write one row per `(scenario, model)` cell after each round, filled from the run JSON and raw logs, not from worker self-report. The worker's `## Run Outcome` section is narrative context only (a retried worker knows it is retrying — the retry spec says so — but is never told its attempt number); every sheet field comes from `~/.ringer/runs.jsonl` / `./ringer.py models`.
 
-Track first-try pass, eventual pass, attempts, human repair minutes, provider stall minutes, tokens total, full cost per ACCEPTED artifact, and the final disposition.
+Track first-try acceptance, acceptance after retry, attempts, human repair minutes, provider stall minutes, reported tokens, full cost per ACCEPTED artifact, and the final disposition. Column names are shared with `templates/bakeoff-kit/score-sheet.csv` so rounds run under either kit stay comparable.
+
+The sheet ships header-only. Example rows (do not append these as data):
+
+| run_id | scenario | model | first_try_acceptance | acceptance_after_retry | attempts | human_repair_minutes | provider_stall_minutes | reported_tokens | full_cost_per_accepted_artifact | disposition | notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| bakeoff-YYYY-MM-DD-a | invoice-classification | openrouter/z-ai/glm-5.2 | yes | yes | 1 | 0 | 0 | 18432 | 0.03 | accepted | first-try pass |
+| bakeoff-YYYY-MM-DD-b | invoice-classification | openrouter/moonshotai/kimi-k2.7-code | no | no | 2 | 6 | 18 | 96210 | | provider-failure | stalled twice, nothing accepted |
 
 Disposition must be one of: `wrong-answer`, `unsupported-claim`, `missed-source`, `wrong-tool`, `partial-completion`, `provider-failure`, `timeout`, `check-failure`, `check-wrong`, `routing-wrong`, `accepted`.
 
 Judge economics on full cost per ACCEPTED artifact. Never compare list price per token.
-
-## Blind grading
-
-Where practical, mask model names while the evaluator writes notes. Unmask only after the notes are locked.
-
-Why: graders anchor on reputation. Blind notes reduce that bias.
 
 ## Mix with
 

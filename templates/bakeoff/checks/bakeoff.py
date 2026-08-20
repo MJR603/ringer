@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 
-REQUIRED_HEADINGS = ("Criteria Grades", "Evidence", "Failures Or Costs")
+REQUIRED_HEADINGS = ("Run Outcome", "Criteria Grades", "Evidence", "Failures Or Costs")
 MAX_WORDS = 1000
 OPEN_PLACEHOLDER = "{" * 2
 CLOSE_PLACEHOLDER = "}" * 2
@@ -36,6 +36,15 @@ def output_tail(text: str, limit: int = 3000) -> str:
 
 def has_heading(text: str, heading: str) -> bool:
     return bool(re.search(rf"^##\s+{re.escape(heading)}\s*$", text, re.IGNORECASE | re.MULTILINE))
+
+
+def section_body(text: str, heading: str) -> str:
+    match = re.search(
+        rf"^##\s+{re.escape(heading)}\s*$(.*?)(?=^##\s|\Z)",
+        text,
+        re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    )
+    return match.group(1).strip() if match else ""
 
 
 def run_validator(command: str, session_dir: Path, expected_model: str) -> list[str]:
@@ -101,6 +110,23 @@ def main() -> int:
         for heading in REQUIRED_HEADINGS:
             if not has_heading(text, heading):
                 failures.append(fail("missing_section", f"evaluator-notes.md missing '## {heading}'"))
+        if has_heading(text, "Run Outcome") and not re.search(
+            r"first[- ]try|retry|attempt", section_body(text, "Run Outcome"), re.IGNORECASE
+        ):
+            failures.append(
+                fail("run_outcome_unstated", "'## Run Outcome' must state first-try versus retry and attempt count")
+            )
+        costs_body = re.sub(
+            r"^VERDICT:.*$", "", section_body(text, "Failures Or Costs"), flags=re.IGNORECASE | re.MULTILINE
+        ).strip()
+        if has_heading(text, "Failures Or Costs") and not costs_body:
+            failures.append(
+                fail(
+                    "cost_note_missing",
+                    "'## Failures Or Costs' must record the accepted-result cost note, "
+                    "or state plainly that nothing was accepted",
+                )
+            )
         if not re.search(r"^VERDICT:\s*\S", text, re.IGNORECASE | re.MULTILINE):
             failures.append(fail("missing_verdict", "evaluator-notes.md must end with a VERDICT line"))
         if not re.search(r"\b(PASS|FAIL|MIXED)\b", text, re.IGNORECASE):
