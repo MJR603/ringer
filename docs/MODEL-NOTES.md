@@ -12,6 +12,10 @@ ringer skill), append one dated line under the model. Say the task type,
 what happened, and what you'd do differently. Only write what the executed
 checks and raw logs support — no vibes, no worker self-reports.
 
+**Index note (2026-08-20):** commit `9c96831` (branch copy `c0ad12a`) backfilled
+dated entries 2026-07-21 → 2026-08-18 across many sections in one commit; `git
+log` does not surface them. This file, not the log, is the record of that period.
+
 ## codex (GPT-5-class, own harness)
 - 2026-08-08 (research / SRG bookkeeping judgment packs, s31+s32): s31 3/3
   with one-retry pattern on judgment packs; s32 repeat — 3/3, two of three
@@ -23,9 +27,6 @@ checks and raw logs support — no vibes, no worker self-reports.
   the proven mech-pack default for this workload. (Recorded under codex
   section for the s30/s31 comparison context: GLM was NOT exercised in s31;
   the s30 GLM note debt is closed as no-evidence — nothing to record.)
-- 2026-08-08 (mech classification, s31): ollama/qwen3:8b failed 0/2 on a
-  mech pack and is DEMOTED for SRG classification work — do not re-audition
-  without a material model update.
 - 2026-07-21 — planner-p0-hardening task1 (code-feature): OAuth plan usage limit hit, both attempts died at 0 tokens ("try again Jul 25"). Not a capability signal. Route around codex until 2026-07-25; check limit before assigning heavy lanes.
 
 - Strongest general worker; the default engine. Spend reasoning effort per
@@ -246,6 +247,26 @@ checks and raw logs support — no vibes, no worker self-reports.
 
 ## Process lessons (cross-model)
 
+- 2026-08-20 — run `nate-docs-adoption-review-20260820T125654Z-p82661` (estate doc
+  edits, codex/gpt-5.4-high, 8 tasks / 16 attempts): the headline lesson is a FALSE
+  PASS — the executed checks returned PASS on `p1-loop-contract` and
+  `p2-venture-clock` although both workers produced ZERO edits ("Patch was blocked
+  by sandbox policy"); the orchestrator had applied those patches by hand mid-run,
+  and the checks could not tell worker output from orchestrator repair. This file's
+  recurring check-bug class is the false FAIL; this is the inverse and worse — a
+  check that does not discriminate authorship passes work nobody did. Rule: before
+  accepting a PASS in an edit swarm, verify the worker's own diff or export is what
+  satisfied the check. Sandbox context (not the headline): `--sandbox
+  workspace-write` blocked out-of-taskdir writes for every worker — both "PASSes"
+  carry retry=true alongside 14 FAILs, which config variance cannot produce; no
+  task had writable roots set. Remedies in order: (1) scoped
+  `sandbox_workspace_write.writable_roots` per `templates/repo-feature/manifest.json:16`
+  and `templates/repo-feature/README.md:49` (proven 2026-07-06); (2) patch-export
+  contract — workers write complete post-edit copies to ./out/ with truncation
+  guards, orchestrator diffs, applies, re-runs live checks (6/6 first-try on rerun
+  `nate-docs-adoption-review-20260820T132223Z-p89764`); (3) `full_access` LAST —
+  it maps to `--dangerously-bypass-approvals-and-sandbox`, a sandbox bypass, not a
+  configuration choice.
 - 2026-07-21 — planner-p2 t7: check bug class NEW to the list — a
   forbidden-pattern grep (`new Date()|Date.now`) matched the worker's COMMENT
   explaining it doesn't use those calls. Worker attempt-2 substance was correct;
@@ -388,6 +409,9 @@ checks and raw logs support — no vibes, no worker self-reports.
 
 ## claude (Claude Code CLI, subscription lane)
 
+- Cross-ref: Sonnet's 2026-08-08 SRG mech-classification results (7/7 and 3/3
+  first-try) are filed under `## codex` for s30/s31 comparison context.
+
 - 2026-07-29 — OP-COORD-01 program survey (research, 17 tasks across 4 rounds, sonnet on `claude` / `claude-readonly` / `claude-research` lanes): **the scoreboard's red rows for this job are almost entirely MINE, not the model's.** 8 of 9 first-round failures were orchestrator check bugs, each burning a retry: (1) section anchors treated as part of a path — `SOP-013.md §3.1` never `exists`; (2) repo-relative paths resolved against the caller's cwd; (3) `gate`/`obligation`/`person`/`entity` nodes required to have a filesystem path, when a deadline or an external org has none; (4) only the FIRST node table parsed, so reports that split nodes by class lost most rows and then threw phantom "undeclared node" errors on their own edges; (5) escaped pipes (`\|`) inside cells splitting rows into the wrong cell count and silently dropping them; (6) markdown HEADER rows checked for citations — a header containing the word "Pricing" failed as an "unsourced pricing claim", twice. Re-running the 8 against fixed checks: 7 passed, 1 was a genuine catch. **Lesson (5th instance of this class in this file): baseline a check against a REALISTIC artifact, not a hand-written fixture.** My fixture used one node table, absolute paths, no anchors, no escaped pipes — none of the shapes real workers produce. The fixture passed; reality failed. Baseline against a sample of actual worker output before spawning a batch.
 - 2026-07-29 — same job, the model's actual behaviour was strong. Workers repeatedly refused to assert `live` when their tooling could not prove it, wrote `verified_how=GAP` instead, and said so explicitly in their own Gaps sections ("this is a materially different, weaker command than a direct `stat`, noted here so it isn't mistaken for one"). One flagged that its finding "confirms the brief's premise rather than surfacing an exception to it" — i.e. volunteering that it had found absence of evidence, not evidence. When briefed with an epistemic standard, sonnet holds it under pressure and reports its own limits unprompted. The single real failure was mislabeling an unchecked item `held` rather than leaving state empty — an over-assertion, correctly caught by the check.
 - 2026-07-29 — sandbox note for the `claude` engine: widening `--allowedTools` to include read-only shell (`ls`/`stat`/`git log`/`launchctl list`) got `launchctl`, `launchctl print` and `ps` working, but did NOT lift the harness's working-directory restriction — `stat`/`find`/`git` against any path outside the worker's own taskdir stayed blocked even with the disable-sandbox flag set. That is a separate, harder layer than the tool-prefix allowlist. Workers routed around it by reading `.git/logs/HEAD` directly (the Read tool is not so restricted). Budget for this: filesystem-inspection swarms on this harness cannot `stat` the estate, and specs should say so up front rather than letting workers discover it and spend turns on it.
@@ -398,6 +422,9 @@ checks and raw logs support — no vibes, no worker self-reports.
 - 2026-07-21 — p1a task6 (code-feature, opus): scoreboard FAIL x2 is FALSE — both were orchestrator probe bugs (cap arithmetic exceeded the cap in the "uncapped" case; excess->reinvest->taxed-growth second-order income; survivor tax flip read as a disposition spike). Opus implementation was correct to the dollar (verified by empirical decomposition), honored the integrity rule, cleaned scratch. Opus now 3/3 truly-correct on hardest lanes. Probe-author lessons now standing: (1) no-account households for attribution; (2) kill the excess-reinvest channel (spend > income) when asserting exact deltas; (3) guards must discriminate at the right order of magnitude.
 
 ## ollama/qwen3:8b
+- 2026-08-08 (mech classification, s31): ollama/qwen3:8b failed 0/2 on a
+  mech pack and is DEMOTED for SRG classification work — do not re-audition
+  without a material model update.
 - 2026-07-24 (data-pipeline, srg-2025-recon normalize-rbc-chq): FAIL x2, produced zero deliverables both attempts even after task-local-write fix that unblocked sonnet/opus peers. 287-row CSV transform with a detailed spec — well within claimed capability, but it got lost in sandbox/write mechanics. Demoted for data-pipeline; don't re-audition below 14B on multi-file harness tasks.
 
 ## sonnet (claude) — 2026-07-29, op-coord-01-stage2-gate-repackage
@@ -434,10 +461,3 @@ checks and raw logs support — no vibes, no worker self-reports.
 ## google/gemini-3.7-flash (OpenRouter via opencode)
 - 2026-08-18 — research (r-accounting s50 forensic lane): audition VOID, not a demotion. Both attempts died in ~1s with OpenRouter "Unexpected server error" (err_34a6f78d, err_d177a6e3) — zero model output. Model was added to the catalog 08-14; provider route may not be live yet. Re-audition after a trivial one-task probe passes; do not burn a real lane on it again until then.
 
-## Orchestration lesson (not model-specific)
-- 2026-08-20 — estate-edit swarm, codex/gpt-5.4-high: 6/8 tasks failed twice because
-  `--sandbox workspace-write` blocks writes outside the task dir; two tasks got through
-  (writable-roots config variance). Fix that worked: patch-export contract — workers
-  write complete post-edit copies to ./out/ with truncation guards, orchestrator
-  diffs, applies, re-runs live checks. 6/6 first-try on rerun. Any manifest that
-  edits files outside the workdir needs the export contract or full_access.
