@@ -35,6 +35,24 @@ The manifest invokes `checks/bakeoff.py`. The validator checks the evaluator rep
 
 This catches the specific bakeoff failure mode from prior runs: task keys named different competitors while the engine block ran one hard-coded model. A real bakeoff has the candidate in the per-task `model` field and verifies the model column or run metadata.
 
+Before you fan out a round, baseline the check against at least one realistic worker artifact, not only hand-written fixtures. See `docs/MODEL-NOTES.md` for the failure mode this avoids.
+
+## Score sheet
+
+Use `score-sheet.csv` as the round ledger. Write one row per `(scenario, model)` cell after each round, filled from the run JSON and raw logs, not from worker self-report.
+
+Track first-try pass, eventual pass, attempts, human repair minutes, provider stall minutes, tokens total, full cost per ACCEPTED artifact, and the final disposition.
+
+Disposition must be one of: `wrong-answer`, `unsupported-claim`, `missed-source`, `wrong-tool`, `partial-completion`, `provider-failure`, `timeout`, `check-failure`, `check-wrong`, `routing-wrong`, `accepted`.
+
+Judge economics on full cost per ACCEPTED artifact. Never compare list price per token.
+
+## Blind grading
+
+Where practical, mask model names while the evaluator writes notes. Unmask only after the notes are locked.
+
+Why: graders anchor on reputation. Blind notes reduce that bias.
+
 ## Mix with
 
 - `focus-group`: use focus-group to define fixed personas and then bakeoff models against those same scenario rows.
