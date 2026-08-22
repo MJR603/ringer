@@ -461,3 +461,32 @@ log` does not surface them. This file, not the log, is the record of that period
 ## google/gemini-3.7-flash (OpenRouter via opencode)
 - 2026-08-18 — research (r-accounting s50 forensic lane): audition VOID, not a demotion. Both attempts died in ~1s with OpenRouter "Unexpected server error" (err_34a6f78d, err_d177a6e3) — zero model output. Model was added to the catalog 08-14; provider route may not be live yet. Re-audition after a trivial one-task probe passes; do not burn a real lane on it again until then.
 
+
+## qwen2.5-coder:14b via opencode-local (DELETED 2026-08-21)
+- 2026-08-21 — local-coder bakeoff vs qwen3:8b (both 16K-ctx variants, 3
+  scenarios: stats bugfix, CSV dedupe CLI, field rename): 0/6 attempts. Emits
+  tool calls as fenced-JSON text instead of invoking tools under OpenCode →
+  files never written; also 4-13 min/cell swap-thrash on the 16GB machine with
+  normal apps open. qwen3:8b-16k went 3/3 first-try on identical cells.
+  Model deleted; do not re-audition on this hardware.
+
+## qwen3:8b via opencode-local — 16K context fix
+- 2026-08-21 — round 1 of the same bakeoff failed 6/6 for BOTH models on the
+  Ollama app default 4096 num_ctx: specs truncated, workers wrote correct code
+  to nowhere or hallucinated "file written". Fix: derived model qwen3:8b-16k
+  (PARAMETER num_ctx 16384), now the opencode-local model_default. Always route
+  local lane work to the -16k variant; never the bare tag.
+
+## gemma4:e4b-16k via opencode-local (AUDITION PASSED 2026-08-21)
+- 2026-08-21 — local-coder bakeoff rerun (same 3 cells qwen3:8b-16k passed:
+  stats bugfix, CSV dedupe CLI, field rename): all 3 deliverables PASS their
+  executed checks. Code quality solid — correct sample variance, edge-case
+  ValueErrors, clean dedupe with casing preserved. SCOREBOARD CAVEAT: the
+  model log holds 9 junk FAIL rows for this model from the same evening —
+  3 from a run before gemma4:e4b-16k was registered in opencode.jsonc
+  (instant "Unexpected server error", zero model output) and 6 from an
+  orchestrator check bug (literal `{taskdir}` placeholder — ringer does no
+  such substitution; write literal absolute paths in checks). Validators
+  were re-executed against the surviving deliverables: 3/3 PASS. Treat those
+  FAIL rows as void, not model evidence. ~5-6 min/cell on the 16GB machine.
+  Derived via `PARAMETER num_ctx 16384` from gemma4:e4b (shared blob).
