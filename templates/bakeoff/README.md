@@ -66,3 +66,10 @@ Judge economics on full cost per ACCEPTED artifact. Never compare list price per
 - Keep scenario wording identical across a row. Small wording changes ruin comparability.
 - A harness failure is a result. Record it instead of hiding it.
 - Verify the run state or session metadata, not just the task key, before claiming a model won.
+
+## Blind grading (mandatory — OP-ADOPT-01 2026-08-23)
+
+Anonymize artifacts (`candidate-A/B/…`) and fill `score-sheet.csv` against the
+shared acceptance criteria BEFORE de-anonymizing or reading MODEL-NOTES. A
+verdict without a filled score sheet is not a verdict. See the ringer skill's
+post-run ritual step 5.
