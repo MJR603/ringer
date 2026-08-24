@@ -38,7 +38,7 @@ Canonical root: `/Users/Matt13/Richardson/AI-Operating-System`
 
 - ID: `agent-operations`
 - Description: Delegation, handoff, harness, session control, and skill extraction.
-- Skills: `goal-prompt-generator`, `session-to-skill-extractor`, `visible-delegation`, `session-operating-map`, `handoff`, `session-start`, `codex-operating-drill`, `thread-health-monitor`, `agentic-harness-design`
+- Skills: `goal-prompt-generator`, `session-to-skill-extractor`, `visible-delegation`, `session-operating-map`, `handoff`, `session-start`, `codex-operating-drill`, `thread-health-monitor`, `agentic-harness-design`, `discussion-packet`
 
 ## Agent Maintenance
 
@@ -72,6 +72,7 @@ Canonical root: `/Users/Matt13/Richardson/AI-Operating-System`
 
 ## Skills
 
+- `discussion-packet` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/discussion-packet/SKILL.md`
 - `current-info-search` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/current-info-search/SKILL.md`
 - `heavy-file-ingestion` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/heavy-file-ingestion/SKILL.md`
 - `attachment-markdown-gateway` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/attachment-markdown-gateway/SKILL.md`
