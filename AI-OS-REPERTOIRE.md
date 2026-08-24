@@ -26,7 +26,7 @@ Canonical root: `/Users/Matt13/Richardson/AI-Operating-System`
 
 - ID: `core-infrastructure`
 - Description: Current info, source ingestion, media/text conversion, and artifact output.
-- Skills: `current-info-search`, `heavy-file-ingestion`, `attachment-markdown-gateway`, `media-transcription`, `html-artifact-builder`, `image-generation-gateway`
+- Skills: `current-info-search`, `heavy-file-ingestion`, `attachment-markdown-gateway`, `clean-sensitive-docs`, `media-transcription`, `html-artifact-builder`, `image-generation-gateway`
 
 ## Research And Thinking
 
@@ -76,6 +76,7 @@ Canonical root: `/Users/Matt13/Richardson/AI-Operating-System`
 - `current-info-search` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/current-info-search/SKILL.md`
 - `heavy-file-ingestion` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/heavy-file-ingestion/SKILL.md`
 - `attachment-markdown-gateway` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/attachment-markdown-gateway/SKILL.md`
+- `clean-sensitive-docs` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/clean-sensitive-docs/SKILL.md`
 - `meeting-synthesis` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/meeting-synthesis/SKILL.md`
 - `goal-prompt-generator` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/goal-prompt-generator/SKILL.md`
 - `session-to-skill-extractor` -> `/Users/Matt13/Richardson/AI-Operating-System/skills/session-to-skill-extractor/SKILL.md`
