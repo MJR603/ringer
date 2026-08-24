@@ -490,3 +490,10 @@ log` does not surface them. This file, not the log, is the record of that period
   were re-executed against the surviving deliverables: 3/3 PASS. Treat those
   FAIL rows as void, not model evidence. ~5-6 min/cell on the 16GB machine.
   Derived via `PARAMETER num_ctx 16384` from gemma4:e4b (shared blob).
+
+## ollama/qwen3:8b-16k
+- 2026-08-22 — email-intake-restore graph-shape-sweep (code-review, read-only repo scout): FAIL x2. Both attempts abandoned the worktree cwd and tried to read files inside opencode's own scratch tmp dir; attempt 2 produced generic troubleshooting chat instead of the report. Prior 3/3 code-fix record does not transfer to multi-step repo navigation tasks — keep this model on single-file mechanical work; route repo-wide sweeps to GLM/codex or do them inline.
+
+## Orchestrator note — 2026-08-24 (backlog-part4 run, codex ×2 + GLM-5.2 ×1)
+- Two validator FAILs (agents-md/codex, skill-shadow/GLM-5.2) were CHECK bugs, not model failures: the verify string contained `test $? -eq 2` inside a double-quoted `--verify-command`, so the shell expanded `$?` to `0` before the validator ran (an assertion that cannot pass); agents-md's verify also named test paths in `scripts/tests/` that live in `scripts/`, so the worker added shims outside its ownership. Both patches passed the corrected chains on the real tree first try. Do not read these as demotions. Lesson: single-quote or escape `$?` in verify strings, or put exit-code logic in a check script; and confirm every path in a verify chain exists in the worktree before dispatch.
+- GLM-5.2 (opencode) on the skill-shadow bash task: correct on substance first attempt (script + 6 tests + wiring), ~154K tokens over two attempts because the retry only re-ran the impossible check.
