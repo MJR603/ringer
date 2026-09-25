@@ -741,6 +741,11 @@ class EngineConfig:
     # its own "model" — this is what makes a harness engine (OpenCode) model
     # agnostic instead of hard-coding one model into the command line.
     model_default: str = ""
+    # Explicit fallback reasoning effort for this engine, used only when no
+    # attempt carries an effort flag in its resolved argv (task engine_args or
+    # args_template). This is an operator-declared value in Ringer's own
+    # config, not a guess at a harness-side default — see docs/TAXONOMY.md.
+    reasoning_effort_default: str = ""
 
     @property
     def process_name(self) -> str:
@@ -1602,6 +1607,12 @@ def load_engines(raw: Any) -> dict[str, EngineConfig]:
         model_default = str(
             section.get("model_default", base.model_default if base else "")
         ).strip()
+        reasoning_effort_default = str(
+            section.get(
+                "reasoning_effort_default",
+                base.reasoning_effort_default if base else "",
+            )
+        ).strip()
         engines[clean_name] = EngineConfig(
             name=clean_name,
             bin=bin_path,
@@ -1611,6 +1622,7 @@ def load_engines(raw: Any) -> dict[str, EngineConfig]:
             token_regex=token_regex,
             model_report_regex=model_report_regex,
             model_default=model_default,
+            reasoning_effort_default=reasoning_effort_default,
         )
     return engines
 
@@ -9186,9 +9198,7 @@ class RingerRunner:
                     f"[ringer.py] identity: harness reported {reported_model} "
                     f"but manifest/config expected {resolved_model}\n",
                 )
-        reasoning_effort = effective_reasoning_effort_from_command(
-            runtime.last_worker_command
-        )
+        reasoning_effort = resolved_reasoning_effort(engine, runtime.last_worker_command)
         notes_parts = [
             f"retry={'true' if retrying else 'false'}",
             f"worker_returncode={worker.returncode}",
@@ -9473,16 +9483,46 @@ def effective_model_from_command(command: list[str]) -> str:
     return ""
 
 
+# Two-token effort flags (e.g. OpenCode's `--variant high`) recognized in
+# addition to Codex's inline `-c model_reasoning_effort=high` config override.
+REASONING_EFFORT_FLAG_NAMES = ("--variant", "--reasoning-effort", "--effort")
+
+
 def effective_reasoning_effort_from_command(command: list[str]) -> str | None:
     """Return an explicitly configured model reasoning effort from worker argv."""
-    for item in command:
+    for index, item in enumerate(command):
         match = re.search(
             r"(?:^|[=,\s])model_reasoning_effort\s*=\s*[\"']?([^\"',\s]+)",
             item,
         )
         if match:
             effort = match.group(1).strip()
-            return effort or None
+            if effort:
+                return effort
+        if item in REASONING_EFFORT_FLAG_NAMES:
+            if index + 1 < len(command):
+                candidate = command[index + 1].strip()
+                if candidate and not candidate.startswith("-"):
+                    return candidate
+            continue
+        for flag in REASONING_EFFORT_FLAG_NAMES:
+            if item.startswith(f"{flag}="):
+                candidate = item.removeprefix(f"{flag}=").strip()
+                if candidate:
+                    return candidate
+    return None
+
+
+def resolved_reasoning_effort(
+    engine: EngineConfig | None,
+    command: list[str] | None = None,
+) -> str | None:
+    """Explicit effort only: worker argv first, then the engine's configured default."""
+    from_command = effective_reasoning_effort_from_command(command or [])
+    if from_command:
+        return from_command
+    if engine and engine.reasoning_effort_default:
+        return engine.reasoning_effort_default
     return None
 
 
